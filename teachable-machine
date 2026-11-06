@@ -3,173 +3,357 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Coffee, Bottle or Face</title>
+<title>What Is David Holding?</title>
 <style>
-  body { font-family: -apple-system, system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; background: #fafafa; color: #222; }
-  h1 { font-size: 20px; }
-  details { border: 1px solid #ddd; border-radius: 8px; margin: 12px 0; padding: 6px 10px; font-size: 14px; }
-  input[type=text] { width: 100%; box-sizing: border-box; padding: 6px; }
-  button { font-size: 16px; padding: 8px 20px; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; cursor: pointer; }
-  button:disabled { background: #999; cursor: default; }
-  #status { margin: 10px 0; font-size: 14px; }
-  #status.error { color: #c5221f; }
-  #webcam-container canvas { width: 100%; max-width: 300px; border-radius: 8px; border: 6px solid #ddd; transition: border-color .2s; }
-  .row { margin: 8px 0; }
-  .name { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 3px; }
-  .track { height: 18px; background: #e6e6e6; border-radius: 9px; overflow: hidden; }
-  .bar { height: 100%; width: 0; border-radius: 9px; transition: width .1s; }
-  #top { font-size: 26px; font-weight: 600; padding: 12px; border-radius: 8px; color: #fff; text-align: center; margin: 10px 0; display: none; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { font-family: -apple-system, system-ui, "Segoe UI", sans-serif; color: #fff; background: #120d24; }
+
+  /* ---------- Intro screen ---------- */
+  #intro {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 28px; text-align: center; padding: 16px; z-index: 50;
+    background: linear-gradient(120deg, #ff3cac, #784ba0, #2b86c5, #00d2a8, #ffb800, #ff3cac);
+    background-size: 400% 400%; animation: drift 12s ease infinite;
+  }
+  @keyframes drift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+  #intro h1 { font-size: clamp(32px, 7vw, 72px); margin: 0; line-height: 1.05; text-shadow: 0 4px 0 rgba(0,0,0,.25); }
+  #intro p { margin: 0; font-size: clamp(16px, 2.6vw, 22px); opacity: .95; }
+  .floaty { font-size: clamp(36px, 7vw, 64px); display: flex; gap: 18px; }
+  .floaty span { display: inline-block; animation: bob 2.4s ease-in-out infinite; }
+  .floaty span:nth-child(2) { animation-delay: .3s } .floaty span:nth-child(3) { animation-delay: .6s } .floaty span:nth-child(4) { animation-delay: .9s }
+  @keyframes bob { 0%,100%{transform:translateY(0) rotate(-6deg)} 50%{transform:translateY(-16px) rotate(6deg)} }
+
+  #start-btn {
+    font-size: clamp(22px, 4vw, 34px); font-weight: 800; letter-spacing: .04em; color: #fff; cursor: pointer;
+    padding: 20px 56px; border: 0; border-radius: 999px;
+    background: linear-gradient(90deg, #ff004c, #ff8a00, #ffe600, #2bff88, #00c3ff, #a033ff, #ff004c);
+    background-size: 300% 100%; animation: rainbow 3s linear infinite, pulse 1.6s ease-in-out infinite;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 -6px 0 rgba(0,0,0,.18); text-shadow: 0 2px 0 rgba(0,0,0,.35);
+  }
+  #start-btn:hover { filter: brightness(1.1); }
+  #start-btn:disabled { cursor: progress; animation: rainbow 1s linear infinite; }
+  @keyframes rainbow { to { background-position: 300% 0; } }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.07)} }
+  #status { min-height: 1.4em; font-size: 16px; font-weight: 600; max-width: 560px; }
+  #status.error { background: rgba(0,0,0,.55); padding: 10px 14px; border-radius: 10px; }
+
+  /* ---------- Camera stage ---------- */
+  #stage { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 16px;
+           background: radial-gradient(circle at 50% 40%, #2a1f55, #120d24 70%); transition: background .6s; }
+  #stage.on { display: flex; }
+  #webcam-container canvas { display: block; width: min(78vw, 360px); height: auto; border-radius: 22px; border: 8px solid #555; transition: border-color .25s, transform .25s; }
+  #verdict { position: relative; z-index: 20; font-size: clamp(26px, 5vw, 44px); font-weight: 900; text-align: center; text-shadow: 0 3px 0 rgba(0,0,0,.4); min-height: 1.2em; }
+  #label-container { position: relative; z-index: 20; width: min(92vw, 420px); background: rgba(0,0,0,.45); border-radius: 14px; padding: 10px 14px; backdrop-filter: blur(4px); }
+  .row { margin: 6px 0; }
+  .name { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+  .track { height: 12px; background: rgba(255,255,255,.15); border-radius: 6px; overflow: hidden; }
+  .bar { height: 100%; width: 0; border-radius: 6px; transition: width .12s; }
+
+  /* ---------- Effects layers ---------- */
+  .fx { position: fixed; inset: 0; pointer-events: none; }
+  #face-fx  { z-index: 5; }
+  #water    { z-index: 6; left: 0; right: 0; bottom: 0; top: auto; height: 0%; inset: auto 0 0 0;
+              background: linear-gradient(180deg, rgba(64,180,255,.75), rgba(10,70,170,.9)); }
+  #water::before { content: ""; position: absolute; left: -50%; top: -28px; width: 200%; height: 30px;
+              background: radial-gradient(ellipse 40px 22px at 50% 100%, rgba(64,180,255,.75) 98%, transparent 100%) 0 0 / 80px 30px repeat-x;
+              animation: wave 1.4s linear infinite; }
+  @keyframes wave { to { transform: translateX(80px); } }
+  #coffee-fx { z-index: 7; }
+  #napkin-fx { z-index: 8; }
+  .p { position: absolute; left: 0; top: 0; will-change: transform; line-height: 1; }
+  .bubble { position: absolute; bottom: 0; font-size: 22px; animation: rise 3s linear forwards; }
+  @keyframes rise { to { transform: translateY(-110vh); opacity: 0; } }
+  .swimmer { position: absolute; font-size: 44px; animation: swim 6s linear forwards; }
+  @keyframes swim { from { transform: translateX(-10vw) } to { transform: translateX(110vw) } }
+
+  .napkin { position: absolute; font-size: 120px; filter: drop-shadow(0 8px 12px rgba(0,0,0,.35)); }
+  .streak { position: absolute; height: 160px; width: 140vw; left: -20vw;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), transparent); filter: blur(6px); }
+  .sparkle { position: absolute; font-size: 30px; animation: sparkle 1s ease-out forwards; }
+  @keyframes sparkle { from { transform: scale(.2) rotate(0); opacity: 1 } to { transform: scale(1.6) rotate(180deg); opacity: 0 } }
 </style>
 </head>
 <body>
-<h1>☕ Coffee · 💧 Water Bottle · 🙂 Face</h1>
 
-<button type="button" id="start-btn" onclick="init()">Start</button>
-<div id="status"></div>
-<div id="top"></div>
-<div id="webcam-container"></div>
-<div id="label-container"></div>
+<section id="intro">
+  <div class="floaty"><span>☕</span><span>💧</span><span>🧻</span><span>😵‍💫</span></div>
+  <h1>What Is David<br>Holding?</h1>
+  <p>Show the camera a coffee cup, a water bottle, a napkin… or David's face.<br>Consequences will follow.</p>
+  <button type="button" id="start-btn" onclick="init()">START</button>
+  <div id="status"></div>
+</section>
 
-<details id="model-picker">
-  <summary>Model source (only needed if it doesn't load automatically)</summary>
-  <p>By default this loads <code>./my_model/</code> next to this file. If you opened this page by
-     double-clicking it, the browser blocks that, so pick the 3 files from the
-     <code>my_model</code> folder here instead:</p>
-  <input type="file" id="model-files" multiple accept=".json,.bin">
-  <p>…or paste a shareable Teachable Machine link:</p>
-  <input type="text" id="model-url" placeholder="https://teachablemachine.withgoogle.com/models/XXXXX/">
-</details>
+<section id="stage">
+  <div id="verdict">Warming up…</div>
+  <div id="webcam-container"></div>
+  <div id="label-container"></div>
+</section>
 
-<!-- Pinned versions: tfjs@latest is incompatible with the Teachable Machine library -->
+<canvas id="face-fx" class="fx"></canvas>
+<div id="water" class="fx"></div>
+<div id="coffee-fx" class="fx"></div>
+<div id="napkin-fx" class="fx"></div>
+
+<!-- Pinned versions: tfjs@latest is incompatible with the Teachable Machine image library -->
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
-<script type="text/javascript">
-    // Folder containing model.json, metadata.json and weights.bin
-    const MODEL_URL = "./my_model/";
+<script>
+// Trained Teachable Machine model (classes: Coffee, Face, Water Bottle, Napkin)
+const URL = "https://teachablemachine.withgoogle.com/models/XSwbdkCYP/";
 
-    // Below this confidence, show "Not sure" instead of a class
-    const MIN_CONFIDENCE = 0.6;
+const MIN_CONFIDENCE = 0.7;   // smoothed probability needed to trigger an effect
+const SMOOTHING = 0.25;       // 0..1, higher = reacts faster but flickers more
 
-    // Look for each class, keyed by the label names trained in Teachable Machine
-    const CLASS_STYLE = {
-        "Coffee":       { color: "#6d4c41", emoji: "☕" },
-        "Water Bottle": { color: "#1e88e5", emoji: "💧" },
-        "Face":         { color: "#fb8c00", emoji: "🙂" },
-    };
-    const FALLBACK_COLORS = ["#e53935", "#43a047", "#8e24aa", "#00acc1"];
-    const styleFor = (label, i) =>
-        CLASS_STYLE[label] || { color: FALLBACK_COLORS[i % FALLBACK_COLORS.length], emoji: "" };
+// Map trained label -> effect. Matched loosely so label tweaks don't break it.
+function kindOf(label) {
+  const l = label.toLowerCase();
+  if (l.includes("coffee")) return "coffee";
+  if (l.includes("water") || l.includes("bottle")) return "water";
+  if (l.includes("napkin")) return "napkin";
+  if (l.includes("face")) return "face";
+  return null;
+}
+const KIND = {
+  coffee: { name: "COFFEE DETECTED",        emoji: "☕", color: "#a0522d", bg: "#3b2214" },
+  water:  { name: "WATER BOTTLE DETECTED",  emoji: "💧", color: "#1e88e5", bg: "#0b2a4a" },
+  napkin: { name: "NAPKIN DETECTED",        emoji: "🧻", color: "#f5f5f5", bg: "#3d3d46" },
+  face:   { name: "DAVID'S FACE DETECTED",  emoji: "😵‍💫", color: "#ff3cac", bg: "#3a0c35" },
+};
 
-    let model, webcam, labelContainer, maxPredictions, labels = [], bars = [], pcts = [];
+let model, webcam, labels = [], kinds = [], bars = [], pcts = [], smooth = [];
+let active = null;                 // currently detected kind (or null)
+const level = { coffee: 0, water: 0, napkin: 0, face: 0 };  // 0..1 effect intensities
 
-    function setStatus(msg, isError) {
-        const el = document.getElementById("status");
-        el.textContent = msg;
-        el.className = isError ? "error" : "";
+function setStatus(msg, isError) {
+  const el = document.getElementById("status");
+  el.textContent = msg;
+  el.className = isError ? "error" : "";
+}
+
+async function init() {
+  const btn = document.getElementById("start-btn");
+  btn.disabled = true; btn.textContent = "LOADING…";
+  try {
+    setStatus("Summoning the neural network…");
+    model = await tmImage.load(URL + "model.json", URL + "metadata.json");
+    labels = model.getClassLabels();
+    kinds = labels.map(kindOf);
+
+    setStatus("Waking up the camera… (allow access if asked)");
+    webcam = new tmImage.Webcam(300, 300, true);
+    await webcam.setup();
+    await webcam.play();
+    document.getElementById("webcam-container").appendChild(webcam.canvas);
+
+    const lc = document.getElementById("label-container");
+    labels.forEach((label, i) => {
+      const k = KIND[kinds[i]] || { emoji: "", color: "#888" };
+      const row = document.createElement("div");
+      row.className = "row";
+      row.innerHTML = '<div class="name"><span></span><span class="pct">0%</span></div><div class="track"><div class="bar"></div></div>';
+      row.querySelector(".name span").textContent = k.emoji + " " + (kinds[i] === "face" ? "David's Face" : label);
+      row.querySelector(".bar").style.background = k.color;
+      lc.appendChild(row);
+      bars.push(row.querySelector(".bar"));
+      pcts.push(row.querySelector(".pct"));
+      smooth.push(0);
+    });
+
+    document.getElementById("intro").style.display = "none";
+    document.getElementById("stage").classList.add("on");
+    resize();
+    requestAnimationFrame(loop);
+  } catch (err) {
+    console.error(err);
+    let msg = (err && err.message) || String(err);
+    if (err && (err.name === "NotAllowedError" || err.name === "NotFoundError")) msg = "Couldn't access the webcam: " + msg;
+    setStatus("Error: " + msg, true);
+    btn.disabled = false; btn.textContent = "TRY AGAIN";
+  }
+}
+
+// ---------------- main loop ----------------
+let lastT = performance.now();
+async function loop(t) {
+  const dt = Math.min(0.05, (t - lastT) / 1000); lastT = t;
+  webcam.update();
+  await predict();
+  stepEffects(dt, t / 1000);
+  requestAnimationFrame(loop);
+}
+
+async function predict() {
+  const prediction = await model.predict(webcam.canvas);
+  let best = 0;
+  for (let i = 0; i < prediction.length; i++) {
+    smooth[i] += (prediction[i].probability - smooth[i]) * SMOOTHING;
+    bars[i].style.width = (smooth[i] * 100).toFixed(0) + "%";
+    pcts[i].textContent = (smooth[i] * 100).toFixed(0) + "%";
+    if (smooth[i] > smooth[best]) best = i;
+  }
+  const next = smooth[best] >= MIN_CONFIDENCE ? kinds[best] : null;
+  if (next !== active) {
+    active = next;
+    const v = document.getElementById("verdict");
+    const stage = document.getElementById("stage");
+    if (active) {
+      const k = KIND[active];
+      v.textContent = k.emoji + " " + k.name + " " + k.emoji;
+      webcam.canvas.style.borderColor = k.color;
+      stage.style.background = "radial-gradient(circle at 50% 40%, " + k.color + "55, " + k.bg + " 70%)";
+    } else {
+      v.textContent = "🤔 Hmm…";
+      webcam.canvas.style.borderColor = "#555";
+      stage.style.background = "";
     }
+  }
+}
 
-    async function loadModel() {
-        // 1) Files picked by hand
-        const files = Array.from(document.getElementById("model-files").files);
-        if (files.length) {
-            const find = (test) => files.find(f => test(f.name.toLowerCase()));
-            const modelFile = find(n => n.endsWith(".json") && !n.includes("metadata"));
-            const weightsFile = find(n => n.endsWith(".bin"));
-            const metaFile = find(n => n.includes("metadata"));
-            if (!modelFile || !weightsFile || !metaFile) {
-                throw new Error("Please select all 3 files: model.json, weights.bin and metadata.json.");
-            }
-            return tmImage.loadFromFiles(modelFile, weightsFile, metaFile);
-        }
-        // 2) Shareable link
-        let url = document.getElementById("model-url").value.trim();
-        // 3) Default: local ./my_model/ folder
-        if (!url) url = MODEL_URL;
-        if (!url.endsWith("/")) url += "/";
-        return tmImage.load(url + "model.json", url + "metadata.json");
+function stepEffects(dt, time) {
+  // Ramp the active effect up, let the others fade out
+  for (const k in level) {
+    const target = active === k ? 1 : 0;
+    const speed = target ? 0.6 : 0.35;
+    level[k] += Math.sign(target - level[k]) * Math.min(Math.abs(target - level[k]), speed * dt);
+  }
+  coffeeStep(dt);
+  waterStep(dt);
+  napkinStep(dt, time);
+  faceStep(dt, time);
+}
+
+// ---------------- ☕ coffee rain ----------------
+const coffeeLayer = document.getElementById("coffee-fx");
+const cups = [];
+let cupTimer = 0;
+function coffeeStep(dt) {
+  const H = innerHeight;
+  if (active === "coffee") {
+    cupTimer += dt * (6 + 40 * level.coffee);     // gets heavier the longer it's held
+    while (cupTimer > 1) {
+      cupTimer--;
+      const el = document.createElement("div");
+      el.className = "p";
+      el.textContent = Math.random() < 0.85 ? "☕" : (Math.random() < 0.5 ? "🫘" : "🥐");
+      const size = 28 + Math.random() * 46;
+      el.style.fontSize = size + "px";
+      coffeeLayer.appendChild(el);
+      cups.push({ el, x: Math.random() * innerWidth, y: -80, vy: 80 + Math.random() * 200, vx: (Math.random() - .5) * 60,
+                  r: Math.random() * 360, vr: (Math.random() - .5) * 600, size, landed: false, fade: 1 });
     }
-
-    async function init() {
-        const btn = document.getElementById("start-btn");
-        btn.disabled = true;
-        try {
-            setStatus("Loading model…");
-            model = await loadModel();
-            maxPredictions = model.getTotalClasses();
-            labels = model.getClassLabels();
-
-            setStatus("Starting webcam… (allow camera access if asked)");
-            webcam = new tmImage.Webcam(300, 300, true); // width, height, flip
-            await webcam.setup();
-            await webcam.play();
-
-            const wc = document.getElementById("webcam-container");
-            wc.innerHTML = "";
-            wc.appendChild(webcam.canvas);
-
-            labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = "";
-            bars = []; pcts = [];
-            for (let i = 0; i < maxPredictions; i++) {
-                const s = styleFor(labels[i], i);
-                const row = document.createElement("div");
-                row.className = "row";
-                row.innerHTML =
-                    '<div class="name"><span style="color:' + s.color + ';font-weight:600"></span><span class="pct">0%</span></div>' +
-                    '<div class="track"><div class="bar" style="background:' + s.color + '"></div></div>';
-                row.querySelector(".name span").textContent = (s.emoji ? s.emoji + " " : "") + labels[i];
-                labelContainer.appendChild(row);
-                bars.push(row.querySelector(".bar"));
-                pcts.push(row.querySelector(".pct"));
-            }
-
-            document.getElementById("model-picker").open = false;
-            setStatus("Running. Detected classes: " + labels.join(", "));
-            btn.textContent = "Running";
-            window.requestAnimationFrame(loop);
-        } catch (err) {
-            console.error(err);
-            let msg = err && err.message ? err.message : String(err);
-            if (err && (err.name === "NotAllowedError" || err.name === "NotFoundError")) {
-                msg = "Couldn't access the webcam: " + msg;
-            } else if (location.protocol === "file:") {
-                msg = "The browser blocked loading ./my_model/ because this page was opened as a file. " +
-                      "Choose the 3 files from the my_model folder below, then press Start again.";
-                document.getElementById("model-picker").open = true;
-            }
-            setStatus("Error: " + msg, true);
-            btn.disabled = false;
-        }
+  }
+  for (let i = cups.length - 1; i >= 0; i--) {
+    const c = cups[i];
+    if (!c.landed) {
+      c.vy += 900 * dt; c.y += c.vy * dt; c.x += c.vx * dt; c.r += c.vr * dt;
+      const floor = H - c.size - Math.random() * 6;
+      if (c.y >= floor) {                        // bounce once, then pile up on the floor
+        if (c.vy > 350) { c.vy *= -0.35; c.y = floor; }
+        else { c.y = floor; c.landed = true; }
+      }
     }
+    if (active === "napkin") c.fade -= dt * 1.5; // napkins clean up the mess
+    if (c.fade <= 0 || c.y > H + 100) { c.el.remove(); cups.splice(i, 1); continue; }
+    c.el.style.opacity = c.fade;
+    c.el.style.transform = `translate(${c.x}px, ${c.y}px) rotate(${c.r}deg)`;
+  }
+  while (cups.length > 260) cups.shift().el.remove();
+}
 
-    async function loop() {
-        webcam.update();
-        await predict();
-        window.requestAnimationFrame(loop);
+// ---------------- 💧 rising water ----------------
+const waterEl = document.getElementById("water");
+let waterLevel = 0, bubbleTimer = 0;
+function waterStep(dt) {
+  if (active === "water") waterLevel = Math.min(1.05, waterLevel + dt * 0.12);       // ~8s to flood
+  else waterLevel = Math.max(0, waterLevel - dt * (active === "napkin" ? 0.5 : 0.04)); // napkins mop it up
+  waterEl.style.height = (waterLevel * 100) + "%";
+  if (waterLevel > 0.05) {
+    bubbleTimer += dt * 8 * waterLevel;
+    while (bubbleTimer > 1) {
+      bubbleTimer--;
+      const b = document.createElement("div");
+      b.className = Math.random() < 0.06 ? "swimmer" : "bubble";
+      if (b.className === "swimmer") {
+        b.textContent = ["🐟", "🐠", "🐙", "🦆", "🧜"][Math.floor(Math.random() * 5)];
+        b.style.bottom = (Math.random() * waterLevel * 80) + "%";
+      } else {
+        b.textContent = "🫧";
+        b.style.left = (Math.random() * 100) + "%";
+        b.style.fontSize = (12 + Math.random() * 22) + "px";
+      }
+      waterEl.appendChild(b);
+      b.addEventListener("animationend", () => b.remove());
     }
+  }
+}
 
-    async function predict() {
-        const prediction = await model.predict(webcam.canvas);
-        let best = 0;
-        for (let i = 0; i < maxPredictions; i++) {
-            const p = prediction[i].probability;
-            bars[i].style.width = (p * 100).toFixed(0) + "%";
-            pcts[i].textContent = (p * 100).toFixed(0) + "%";
-            if (p > prediction[best].probability) best = i;
-        }
-        const top = document.getElementById("top");
-        top.style.display = "block";
-        if (prediction[best].probability < MIN_CONFIDENCE) {
-            top.style.background = "#9e9e9e";
-            top.textContent = "🤔 Not sure";
-            webcam.canvas.style.borderColor = "#ddd";
-        } else {
-            const s = styleFor(prediction[best].className, best);
-            top.style.background = s.color;
-            top.textContent = (s.emoji ? s.emoji + " " : "") + prediction[best].className;
-            webcam.canvas.style.borderColor = s.color;
-        }
+// ---------------- 🧻 napkins wipe everything ----------------
+const napkinLayer = document.getElementById("napkin-fx");
+const wipers = [];
+let napkinTimer = 0;
+function napkinStep(dt, time) {
+  if (active === "napkin") {
+    napkinTimer += dt * (1 + 3 * level.napkin);
+    while (napkinTimer > 1) {
+      napkinTimer--;
+      const n = document.createElement("div"); n.className = "napkin p"; n.textContent = "🧻";
+      const s = document.createElement("div"); s.className = "streak";
+      napkinLayer.append(s, n);
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      wipers.push({ n, s, dir, x: dir > 0 ? -160 : innerWidth + 40, y: Math.random() * (innerHeight - 140),
+                    speed: 500 + Math.random() * 500, phase: Math.random() * 6, life: 0 });
     }
+  }
+  for (let i = wipers.length - 1; i >= 0; i--) {
+    const w = wipers[i];
+    w.life += dt;
+    w.x += w.dir * w.speed * dt;
+    const scrub = Math.sin(time * 18 + w.phase) * 40;           // vigorous back-and-forth scrubbing
+    w.n.style.transform = `translate(${w.x}px, ${w.y + scrub}px) rotate(${scrub * 0.6}deg)`;
+    w.s.style.top = (w.y - 10) + "px";
+    w.s.style.opacity = Math.max(0, 0.9 - w.life * 0.6);
+    if (Math.random() < dt * 10) {
+      const sp = document.createElement("div"); sp.className = "sparkle"; sp.textContent = "✨";
+      sp.style.left = (w.x + 40) + "px"; sp.style.top = (w.y + scrub + 30) + "px";
+      napkinLayer.appendChild(sp);
+      sp.addEventListener("animationend", () => sp.remove());
+    }
+    if (w.x < -300 || w.x > innerWidth + 300) { w.n.remove(); w.s.remove(); wipers.splice(i, 1); }
+  }
+  webcam.canvas.style.transform = active === "napkin" ? `rotate(${Math.sin(time * 20) * 3}deg)` : "";
+}
+
+// ---------------- 😵‍💫 David's face expands, distorted ----------------
+const faceCanvas = document.getElementById("face-fx");
+const fctx = faceCanvas.getContext("2d");
+let faceGrow = 0;
+function resize() { faceCanvas.width = innerWidth; faceCanvas.height = innerHeight; }
+addEventListener("resize", resize);
+function faceStep(dt, time) {
+  if (active === "face") faceGrow = Math.min(1, faceGrow + dt * 0.12);              // keeps growing
+  else faceGrow = Math.max(0, faceGrow - dt * (active === "napkin" ? 0.8 : 0.3));
+  const W = faceCanvas.width, H = faceCanvas.height;
+  fctx.clearRect(0, 0, W, H);
+  if (faceGrow <= 0.001) return;
+
+  const src = webcam.canvas, sw = src.width, sh = src.height;
+  const size = Math.max(W, H) * (0.25 + faceGrow * 1.6);   // grows past the edges of the screen
+  const cx = W / 2 + Math.sin(time * 1.3) * 30 * faceGrow, cy = H / 2 + Math.cos(time * 1.7) * 20 * faceGrow;
+  const strips = 90, stripH = size / strips, amp = 25 + 140 * faceGrow;
+  fctx.globalAlpha = Math.min(0.85, faceGrow * 1.5);
+  fctx.filter = `saturate(${1 + faceGrow * 2}) hue-rotate(${Math.sin(time) * 40 * faceGrow}deg) contrast(1.2)`;
+  for (let i = 0; i < strips; i++) {
+    const v = i / strips;
+    // bulge in the middle + wobbly sine warp = melting funhouse mirror
+    const bulge = 1 + 0.55 * Math.sin(v * Math.PI) * faceGrow;
+    const wobble = Math.sin(v * 9 + time * 4) * amp * 0.35 + Math.sin(v * 23 - time * 6) * amp * 0.12;
+    const w = size * bulge * (1 + 0.15 * Math.sin(time * 3 + v * 5));
+    fctx.drawImage(src, 0, v * sh, sw, sh / strips + 1,
+                   cx - w / 2 + wobble, cy - size / 2 + i * stripH, w, stripH + 1);
+  }
+  fctx.filter = "none"; fctx.globalAlpha = 1;
+}
 </script>
 </body>
 </html>
